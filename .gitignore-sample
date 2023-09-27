@@ -1,0 +1,7 @@
+fonts
+public/**/
+node_modules
+.gitignore
+config.js
+package-lock.json
+log
