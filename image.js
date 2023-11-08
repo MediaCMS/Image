@@ -58,6 +58,10 @@ async function fetch(request, response, next) {
 }
 
 async function save(request, response, next) {
+    const data = await redis.hGetAll(request.params.slug);
+    if (data?.hash) return next(
+        new Error(`Назва зображення вже існує (${request.params.slug})`)
+    );
     const form = formidable({
         maxFileSize: config.image.maxSize,
         multiples: config.image.multiples,
@@ -80,7 +84,7 @@ async function save(request, response, next) {
         if (fs.existsSync(config.image.path + path)) {
             await fsa.unlink(file.filepath);
             return next(
-                new Error(`Зображення вже існує (${path})`)
+                new Error(`Файл зображення вже існує (${path})`)
             );
         }
         const original = path + '/original.' + extension;
@@ -114,9 +118,10 @@ async function save(request, response, next) {
 }
 
 async function rename(request, response) {
+    console.log(request.body)
     const data = await redis.hGetAll(request.params.slug);
     if (!data?.hash) return response.sendStatus(404);
-    redis.rename(request.params.slug, request.query.slug);
+    redis.rename(request.params.slug, request.body.slug);
     response.end();
 }
 

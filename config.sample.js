@@ -3,7 +3,6 @@ const root = '/var/www/mediacms/image';
 export default {
     ip: '127.0.1.4',
     port: 8888,
-    path: '/api',
     root: root,
     public: root + '/public',
     key: '',
