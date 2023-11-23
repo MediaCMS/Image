@@ -8,21 +8,21 @@ import cache from './cache.js';
 import config from './config.js';
 
 async function fetch(request, response, next) {
-    const extension = request.params.slug.slice(
-        request.params.slug.lastIndexOf('.')
-    );
-    const data = await redis.hGetAll(request.params.slug);
-    if (!data?.hash) return response.sendStatus(404);
-    data.width = parseInt(data.width);
-    data.height = parseInt(data.height);
-
-    let path = '';
-    path += '/' + data.hash.slice(0, 2);
-    path += '/' + data.hash.slice(2, 4);
-    path += '/' + data.hash.slice(4, 6);
-    path += '/' + data.hash + '/';
+    const [hash, extension] = request.params.name.split('.');
+    let path = '/';
+    for (const i of [0, 2, 4]) {
+        path += hash.substring(i, i + 2) + '/'
+    }
+    path += hash + '/';
 
     if (request.query?.width) {
+        let value = (await redis.get(request.params.name));
+        if (!value) return response.sendStatus(404);
+        value = value.split('x');
+        value = {
+            width: parseInt(value[0]),
+            height: parseInt(value[1])
+        }
         let i, delta = { old: Infinity, new: 0 }, query = {
             width: parseInt(request.query.width)
         };
@@ -33,19 +33,19 @@ async function fetch(request, response, next) {
             const width = config.image.widths[i]
             if (query?.height
                 && (query.height > query.width)) {
-                const height = width / (data.width / data.height);
-                if (height > data.height) break;
+                const height = width / (value.width / value.height);
+                if (height > value.height) break;
                 delta.new = Math.abs(query.height - height);
             } else {
-                if (width > data.width) break;
+                if (width > value.width) break;
                 delta.new = Math.abs(query.width - width);
             }
             if (delta.new > delta.old) break;
             delta.old = delta.new
         }
-        path += config.image.widths[i-1] + extension;
+        path += config.image.widths[i-1] + '.' + extension;
     } else {
-        path += 'original' + extension;
+        path += 'original.' + extension;
     }
 
     if (cache.has(path)) {
@@ -118,7 +118,6 @@ async function save(request, response, next) {
 }
 
 async function rename(request, response) {
-    console.log(request.body)
     const data = await redis.hGetAll(request.params.slug);
     if (!data?.hash) return response.sendStatus(404);
     redis.rename(request.params.slug, request.body.slug);

@@ -21,7 +21,7 @@ if (app.get('env') === 'production') {
     app.set('trust proxy', 1);
 }
 
-app.get('/:slug', image.fetch);
+app.get('/:name', image.fetch);
 app.use(function(request, response, next) {
     if (request.headers['x-api-key'] !== config.key) { 
         //log(`HTTP 403 Forbidden (${request.originalUrl})`);
