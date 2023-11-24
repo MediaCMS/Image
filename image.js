@@ -1,4 +1,3 @@
-import fs from 'fs';
 import fsa from 'fs/promises';
 import fse from 'fs-extra';
 import formidable from 'formidable';
@@ -7,17 +6,21 @@ import redis from './redis.js';
 import cache from './cache.js';
 import config from './config.js';
 
-async function fetch(request, response, next) {
-    const [hash, extension] = request.params.name.split('.');
+const hashToPath = hash => {
     let path = '/';
     for (const i of [0, 2, 4]) {
         path += hash.substring(i, i + 2) + '/'
     }
     path += hash + '/';
+    return path
+}
 
+async function fetch(request, response, next) {
+    let value = (await redis.get(request.params.name));
+    if (!value) return response.sendStatus(404);
+    const [hash, extension] = request.params.name.split('.');
+    let path = hashToPath(hash);
     if (request.query?.width) {
-        let value = (await redis.get(request.params.name));
-        if (!value) return response.sendStatus(404);
         value = value.split('x');
         value = {
             width: parseInt(value[0]),
@@ -58,10 +61,6 @@ async function fetch(request, response, next) {
 }
 
 async function save(request, response, next) {
-    const data = await redis.hGetAll(request.params.slug);
-    if (data?.hash) return next(
-        new Error(`Назва зображення вже існує (${request.params.slug})`)
-    );
     const form = formidable({
         maxFileSize: config.image.maxSize,
         multiples: config.image.multiples,
@@ -73,27 +72,22 @@ async function save(request, response, next) {
         );
         const file = files.image;
         if (!(file.mimetype in config.image.types)) return next(
-            new Error(`Заборонений тип зображення (${file.mimetype})`)
+            new Error('Заборонений тип зображення')
         );
         const extension = config.image.types[file.mimetype];
-        let path = '';
-        for (const i of [0, 2, 4]) {
-            path += '/' + file.hash.substring(i, i + 2);
-        }
-        path += '/' + file.hash;
-        if (fs.existsSync(config.image.path + path)) {
-            await fsa.unlink(file.filepath);
-            return next(
-                new Error(`Файл зображення вже існує (${path})`)
-            );
-        }
-        const original = path + '/original.' + extension;
+        const key = file.hash + '.' + extension;
+        const value = await redis.get(key);
+        if (value) return next(
+            new Error(`Зображення вже існує (${key})`)
+        );
+        let path = hashToPath(file.hash);
+        const original = path + 'original.' + extension;
         await fse.move(file.filepath, config.image.path + original);
         const image = await canvas.loadImage(config.image.path + original);
         const ratio = image.width / image.height;
         for (const width of config.image.widths) {
             if (width > image.width) break;
-            const name = path + '/' + width.toString() + '.' + extension;
+            const name = path + width + '.' + extension;
             const height = Math.round(width / ratio);
             const c = canvas.createCanvas(width, height);
             const ctx = c.getContext('2d');
@@ -102,42 +96,18 @@ async function save(request, response, next) {
                 file.mimetype, { quality: config.image.quality }
             ));
         }
-        await redis.hSet(request.params.slug, {
-            hash: file.hash,
-            width: image.width,
-            height: image.height
-        });
+        await redis.set(key, image.width + 'x' + image.height);
         response.json({
-            path: path,
-            mimetype: file.mimetype,
-            width: image.width,
-            height: image.height,
-            size: file.size
+            name: key, width: image.width, height: image.height
         });
     })
 }
 
-async function rename(request, response) {
-    const data = await redis.hGetAll(request.params.slug);
-    if (!data?.hash) return response.sendStatus(404);
-    redis.rename(request.params.slug, request.body.slug);
-    response.end();
-}
-
-async function remove(request, response, next) {
-    const data = await redis.hGetAll(request.params.slug);
-    if (!data?.hash) return response.sendStatus(404);
-    let path = '';
-    for (const i of [0, 2, 4]) {
-        path += '/' + data.hash.slice(i, i + 2);
-    }
-    path += '/' + data.hash;
-    if (!fs.existsSync(config.image.path + path)) return next(
-        new Error(`Зображення відсутнє (${path})`)
-    )
-    await fsa.rm(config.image.path + path, {
-        recursive: true, force: true
-    });
+async function remove(request, response) {
+    const value = await redis.get(request.params.name);
+    if (!value) return response.sendStatus(404);
+    let path = hashToPath(request.params.name.substring(0, 32));
+    await fsa.rm(config.image.path + path, { recursive: true, force: true });
     let parent = path.substring(0, 9);
     for (let i = 0; i < 3; i ++) {
         const items = await fsa.readdir(config.image.path + parent);
@@ -145,8 +115,8 @@ async function remove(request, response, next) {
         await fsa.rmdir(config.image.path + parent);
         parent = parent.substring(0, parent.length - 3);
     }
-    redis.del(request.params.slug);
+    redis.del(request.params.name);
     response.end();
 }
 
-export default { fetch, save, rename, remove }
+export default { fetch, save, remove }

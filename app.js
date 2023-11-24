@@ -29,9 +29,8 @@ app.use(function(request, response, next) {
     }
     next();
 });
-app.post('/:slug', image.save);
-app.patch('/:slug', image.rename);
-app.delete('/:slug', image.remove);
+app.post('/', image.save);
+app.delete('/:name', image.remove);
 
 app.use(async (error, request, response, next) => {
     console.error(error);
