@@ -13,7 +13,7 @@ const server = app.listen(config.port, config.ip, () => {
 const router = express.Router();
 
 app.use(cors(config.cors));
-app.use(express.json({ limit: '1mb' }));
+//app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(config.public));
 

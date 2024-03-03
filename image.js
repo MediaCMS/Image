@@ -67,6 +67,7 @@ async function save(request, response, next) {
         hashAlgorithm: config.image.hash
     });
     form.parse(request, async (error, fields, files) => {
+        let image = { width: 0, height: 0 };
         if (error) return next(
             new Error(`Помилка завантаження файлу (${error})`)
         );
@@ -77,26 +78,27 @@ async function save(request, response, next) {
         const extension = config.image.types[file.mimetype];
         const key = file.hash + '.' + extension;
         const value = await redis.get(key);
-        if (value) return next(
-            new Error(`Зображення вже існує (${key})`)
-        );
-        let path = hashToPath(file.hash);
-        const original = path + 'original.' + extension;
-        await fse.move(file.filepath, config.image.path + original);
-        const image = await canvas.loadImage(config.image.path + original);
-        const ratio = image.width / image.height;
-        for (const width of config.image.widths) {
-            if (width > image.width) break;
-            const name = path + width + '.' + extension;
-            const height = Math.round(width / ratio);
-            const c = canvas.createCanvas(width, height);
-            const ctx = c.getContext('2d');
-            ctx.drawImage(image, 0, 0, width, height);
-            await fsa.writeFile(config.image.path + name, c.toBuffer(
-                file.mimetype, { quality: config.image.quality }
-            ));
+        if (value) {
+            [image.width, image.height] = value.split('x');
+        } else {
+            let path = hashToPath(file.hash);
+            const original = path + 'original.' + extension;
+            await fse.move(file.filepath, config.image.path + original);
+            image = await canvas.loadImage(config.image.path + original);
+            const ratio = image.width / image.height;
+            for (const width of config.image.widths) {
+                if (width > image.width) break;
+                const name = path + width + '.' + extension;
+                const height = Math.round(width / ratio);
+                const c = canvas.createCanvas(width, height);
+                const ctx = c.getContext('2d');
+                ctx.drawImage(image, 0, 0, width, height);
+                await fsa.writeFile(config.image.path + name, c.toBuffer(
+                    file.mimetype, { quality: config.image.quality }
+                ));
+            }
+            await redis.set(key, image.width + 'x' + image.height);
         }
-        await redis.set(key, image.width + 'x' + image.height);
         response.json({
             name: key, width: image.width, height: image.height
         });

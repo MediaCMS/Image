@@ -1,6 +1,5 @@
 fonts
 images/**/
-public/**/
 node_modules
 .gitignore
 config.js
