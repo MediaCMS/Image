@@ -15,11 +15,6 @@
     "type": "git",
     "url": "git+https://github.com/MediaCMS/Image.git"
   },
-  "scripts": {
-    "test": "jest",
-    "start": "webpack --mode development",
-    "build": "webpack --mode production"
-  },
   "dependencies": {
     "canvas": "^2.10.2",
     "cors": "^2.8.5",
@@ -30,6 +25,9 @@
     "redis": "^4.6.10"
   },
   "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "eslint": "^9.19.0",
+    "globals": "^15.14.0",
     "jest": "^27.4.5"
   }
 }

@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { LRUCache } from 'lru-cache';
 import config from './config.js';
 

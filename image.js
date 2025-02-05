@@ -15,7 +15,7 @@ const hashToPath = hash => {
     return path
 }
 
-async function fetch(request, response, next) {
+async function fetch(request, response) {
     let value = (await redis.get(request.params.name));
     if (!value) return response.sendStatus(404);
     const [hash, extension] = request.params.name.split('.');

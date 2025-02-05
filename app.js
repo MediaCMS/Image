@@ -1,3 +1,4 @@
+import process from 'process';
 import express from 'express';
 import cors from 'cors';
 import redis from './redis.js';
@@ -10,7 +11,6 @@ const server = app.listen(config.port, config.ip, () => {
     const server = `${config.ip}:${config.port} [${app.get('env')}]`;
     console.log(`HTTP server started at ${server}`);
 });
-const router = express.Router();
 
 app.use(cors(config.cors));
 //app.use(express.json({ limit: '1mb' }));
