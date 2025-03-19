@@ -1,4 +1,3 @@
-fonts
 images/**/
 node_modules
 .gitignore

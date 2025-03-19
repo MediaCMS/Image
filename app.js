@@ -4,7 +4,7 @@ import cors from 'cors';
 import redis from './redis.js';
 import image from './image.js';
 import config from './config.js';
-//import log from './log.js';
+import log from './log.js';
 
 const app = express();
 const server = app.listen(config.port, config.ip, () => {
@@ -13,7 +13,7 @@ const server = app.listen(config.port, config.ip, () => {
 });
 
 app.use(cors(config.cors));
-//app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(config.public));
 
@@ -22,9 +22,9 @@ if (app.get('env') === 'production') {
 }
 
 app.get('/:name', image.fetch);
-app.use(function(request, response, next) {
+app.use((request, response, next) => {
     if (request.headers['x-api-key'] !== config.key) { 
-        //log(`HTTP 403 Forbidden (${request.originalUrl})`);
+        log(`HTTP 403 Forbidden (${request.originalUrl})`);
         return response.sendStatus(403);
     }
     next();
@@ -39,13 +39,12 @@ app.use(async (error, request, response, next) => {
     Object.getOwnPropertyNames(error)
         .forEach(name => output[name] = error[name]);
     response.status(500).json(output);
-    //await log(error);
+    log(error);
 })
 
 process.on('unhandledRejection', async (error) => {
     console.error('Unhandled Rejection', error);
-    //await log(error);
-//    process.exit(1);
+    log(error);
 })
 
 process.on('SIGINT', async () => {

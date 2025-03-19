@@ -1,11 +1,11 @@
 const root = '/var/www/mediacms/image';
 
 export default {
-    ip: '127.0.1.4',
+    ip: '127.0.1.3',
     port: 8888,
     root: root,
     public: root + '/public',
-    key: '',
+    key: '', // private access key (x-api-key)
     cors: {
         origin: 'https://panel.example.com',
         optionsSuccessStatus: 200
@@ -22,19 +22,23 @@ export default {
         password: null
     },
     cache: {
-        max: 1_000,
-        maxSize: 1_024 * 1_024 * 1_024,
-        maxEntrySize: 1_024 * 1_024
+        max: 1_024,
+        maxSize: 1 * 1_024 ** 3,
+        maxEntrySize: 1 * 1_024 ** 2
     },
     image: {
         path: root + '/images',
-        widths: [320, 480, 640, 800, 960, 1280, 1600, 1920, 2560, 3840],
-        types: { 'image/jpeg': 'jpg' },
-        maxSize: 1 * 1024 ** 2,
+        widths: [
+            320, 480, 640, 800, 960, 1280, 1600, 1920, 2560, 3840
+        ],
+        types: {
+            'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif'
+        },
+        maxSize: 1 * 1_024 ** 2,
         multiples: true,
         quality: 0.8,
         hash: 'md5'
     },
     mode: 'development',
-    log: root + 'log'
+    log: root + '/log'
 }
