@@ -11,14 +11,6 @@
 `git clone https://github.com/MediaCMS/Image.git`
 3. Встановіть необхідні модулі npm за допомогою команди `npm install`
 4. Скопіюйте файли зразки та заповніть їх відповідно до своїх потреб  \
-`config.sample.js` в `config.js` \
-`.gitignore-sample` в `.gitignore` \
+`config.example.js` в `config.js` \
+`.gitignore-example` в `.gitignore` \
 5. Запустіть сервер NodeJS за допомогою команди `node app.js`
-
-#### Допомога
-
-Приватбанк: **** **** **** ****  \
-Монобанк: **** **** **** ****
-
-
-
