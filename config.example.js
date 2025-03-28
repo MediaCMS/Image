@@ -5,10 +5,11 @@ export default {
     port: 8888,
     root: root,
     public: root + '/public',
-    key: '', // private access key (x-api-key)
+    key: '*** Private Access Key ***',
     cors: {
         origin: 'https://panel.example.com',
-        optionsSuccessStatus: 200
+        optionsSuccessStatus: 200,
+        credentials: true
     },
     redis: {
         socket: {
