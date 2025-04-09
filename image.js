@@ -4,6 +4,7 @@ import formidable from 'formidable';
 import canvas from 'canvas';
 import redis from './redis.js';
 import cache from './cache.js';
+
 import config from './config.js';
 
 const types = {};
@@ -19,19 +20,6 @@ const hashToPath = hash => {
     return path
 }
 
-const parseForm = request => {
-    const form = formidable({
-        maxFileSize: config.image.maxSize,
-        multiples: config.image.multiples,
-        hashAlgorithm: config.image.hash
-    });
-    return new Promise((resolve, reject) => {
-        form.parse(request, (error, fields, files) => {
-            if (error) return reject(error);
-            resolve({ fields, files });
-        });
-    });
-}
 
 const fetch = async (request, response) => {
     let cached = (await redis.get(request.params.name));
@@ -83,9 +71,14 @@ const fetch = async (request, response) => {
 }
 
 const save = async (request, response, next) => {
-    const { files } = await parseForm(request);
+    const form = formidable({
+        maxFileSize: config.image.maxSize,
+        multiples: config.image.multiples,
+        hashAlgorithm: config.image.hash
+    });
+    const files = (await form.parse(request))[1];
     let image = { width: 0, height: 0 };
-    const file = files.image;
+    const file = files.image[0];
     if (!file.size) return next(
         new Error('Порожній файл зображення')
     );
