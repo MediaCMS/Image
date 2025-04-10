@@ -39,11 +39,14 @@ const verification = (request, response, next) => {
     next();
 }
 
-app.get('/:name', image.fetch);
-app.post('/', verification, image.save);
-app.delete('/:name', verification, image.remove);
+const router = express.Router();
+router.get('/:name', image.fetch);
+router.post('/', verification, image.save);
+router.delete('/:name', verification, image.remove);
 
-app.use(async (error, request, response, next) => {
+app.use('/', router);
+
+app.use((error, request, response, next) => {
     console.error(error);
     if (response.headersSent) return next(error);
     const output = { name: error.name }
@@ -53,12 +56,12 @@ app.use(async (error, request, response, next) => {
     log(error);
 })
 
-process.on('unhandledRejection', async (error) => {
+process.on('unhandledRejection', error => {
     console.error('Unhandled Rejection', error);
     log(error);
 })
 
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
     console.log('\nSIGINT signal received')
     redis.disconnect();
     server.close();
