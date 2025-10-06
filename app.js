@@ -42,6 +42,7 @@ const verification = (request, response, next) => {
 const router = express.Router();
 router.get('/:name', image.fetch);
 router.post('/', verification, image.save);
+router.patch('/:name', image.modify);
 router.delete('/:name', verification, image.remove);
 
 app.use('/', router);

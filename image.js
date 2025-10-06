@@ -20,48 +20,66 @@ const hashToPath = hash => {
     return path
 }
 
+const parseForm = async request => {
+    const form = formidable({
+        maxFileSize: config.image.maxSize,
+        multiples: config.image.multiples,
+        hashAlgorithm: config.image.hash
+    });
+    return new Promise((resolve, reject) => {
+        form.parse(request, (error, fields, files) => {
+            if (error) return reject(error);
+            resolve({ fields, files });
+        });
+    });
+}
 
 const fetch = async (request, response) => {
-    let cached = (await redis.get(request.params.name));
-    if (!cached) return response.sendStatus(404);
     const [hash, extension] = request.params.name.split('.');
     let path = hashToPath(hash);
-    if (request.query?.width) {
-        cached = cached.split('x');
-        cached = {
-            width: parseInt(cached[0]),
-            height: parseInt(cached[1])
-        }
-        let i, delta = { old: Infinity, new: 0 }, query = {
+    let file = `${config.image.widths[0]}.${extension}`;
+    let original = (await redis.get(request.params.name));
+    if (!original) return response.sendStatus(404);
+    original = original.split('x');
+    original = {
+        width: parseInt(original[0]),
+        height: parseInt(original[1])
+    }
+    if (original.width < config.image.widths[0]) {
+        file = `original.${extension}`;
+    } else if (request.query?.width) {
+        let i, width, height, query = {
             width: parseInt(request.query.width)
         };
         if (request.query?.height) {
             query.height = parseInt(request.query.height);
         }
         for (i = 0; i < config.image.widths.length; i ++) {
-            const width = config.image.widths[i]
+            width = config.image.widths[i]
             if (query?.height
                 && (query.height > query.width)) {
-                const height = width / (cached.width / cached.height);
-                if (height > cached.height) break;
-                delta.new = Math.abs(query.height - height);
+                height = width / (original.width / original.height);
+                if (height > original.height) {
+                    if (i > 0) width = config.image.widths[i-1];
+                    break;
+                }
+                if (height > query.height) break;
             } else {
-                if (width > cached.width) break;
-                delta.new = Math.abs(query.width - width);
+                if (width > original.width) {
+                    if (i > 0) width = config.image.widths[i-1];
+                    break;
+                };
+                if (width > query.width) break;
             }
-            if (delta.new > delta.old) break;
-            delta.old = delta.new
         }
-        path += config.image.widths[i-1] + '.' + extension;
-    } else {
-        path += 'original.' + extension;
+        file = width + '.' + extension;
     }
-
+    path += file;
     response.set('Content-Type', types[extension]);
     if (cache.has(path)) {
-        const blob = cache.get(path);
+        const blob = cache.get(path)
         response.set('Content-Length', blob.length);
-        response.end(blob);
+        response.end(blob)
     } else {
         const blob = await fsa.readFile(config.image.path + path);
         response.set('Content-Length', blob.length);
@@ -70,14 +88,14 @@ const fetch = async (request, response) => {
     }
 }
 
-const save = async (request, response, next) => {
-    const form = formidable({
-        maxFileSize: config.image.maxSize,
-        multiples: config.image.multiples,
-        hashAlgorithm: config.image.hash
-    });
-    const files = (await form.parse(request))[1];
+const save = async (request, response, next)  =>  {
+    const files = (await parseForm(request)).files;
     let image = { width: 0, height: 0 };
+    /*
+    if (error) return next(
+        new Error(`Помилка завантаження файлу (${error})`)
+    );
+    */
     const file = files.image[0];
     if (!file.size) return next(
         new Error('Порожній файл зображення')
@@ -107,15 +125,16 @@ const save = async (request, response, next) => {
                 if (width > image.width) break;
                 const name = path + width + '.' + extension;
                 const height = Math.round(width / ratio);
-                const c = canvas.createCanvas(width, height);
-                const ctx = c.getContext('2d');
-                ctx.drawImage(image, 0, 0, width, height);
-                const buffer = c.toBuffer(
+                const canvasInstance = canvas.createCanvas(width, height);
+                const context = canvasInstance.getContext('2d');
+                context.drawImage(image, 0, 0, width, height);
+                const buffer = canvasInstance.toBuffer(
                     file.mimetype, { quality: config.image.quality }
                 )
                 if (buffer) {
                     await fsa.writeFile(config.image.path + name, buffer);
                 } else {
+                    console.log('file.mimetype', file.mimetype);
                     if (file.mimetype !== 'image/gif') {
                         throw Error('Undefined image buffer')
                     }
@@ -130,6 +149,11 @@ const save = async (request, response, next) => {
         console.log(key, image, files.image)
         return next(error)
     }
+}
+
+const modify = async (request, response) => {
+    console.log('modify', request.params.name, request.body.title)
+    response.end();
 }
 
 const remove = async (request, response) => {
@@ -148,4 +172,4 @@ const remove = async (request, response) => {
     response.end();
 }
 
-export default { fetch, save, remove }
+export default { fetch, save, modify, remove }
